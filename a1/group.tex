@@ -1,0 +1,180 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}                                        
+\usepackage{amssymb}                                         
+\usepackage{amsmath}                                         
+\usepackage{amsthm}                                          
+
+\usepackage{alltt}                                           
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+%random comment
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+\usepackage{geometry}
+
+\def\name{D. Kevin McGrath}
+
+%pull in the necessary preamble matter for pygments output
+\input{pygments.tex}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs311 ``operating systems'' files filesystem I/O},
+  pdftitle = {CS 311 Project 1: UNIX File I/O},
+  pdfsubject = {CS 311 Project 1},
+  pdfpagemode = UseNone
+}
+
+\begin{document}
+
+\title{Homework\#1 Group 35 Write-up}
+\author{Yunfan Li, Zhicheng Fu}
+\date{\today}
+\maketitle
+
+\section{Command Logs}
+cd /scratch/spring2015/ \\
+mkdir cs444-group35 \\
+/scratch/bin/\verb|acl_open| cs444-group35 wushu \\
+/scratch/bin/\verb|acl_open| cs444-group35 fuz \\
+/scratch/bin/\verb|acl_open| cs444-group35 dmcgrath \\
+/scratch/bin/\verb|acl_open| cs444-group35 lesliew \\
+/scratch/bin/\verb|acl_open| cs444-group35 moorsean \\
+\\
+git clone git://git.yoctoproject.org/linux-yocto-3.14 \\
+git checkout tags/v3.14.24 \\
+\\
+git init \\
+\\
+source /scratch/opt/environment-setup-i586-pocky-linux \\
+cp /scratch/spring2015/files/ ./ \\
+cd files \\
+qemu-system-i386 -gdb tcp::5535 -S -nographic -kernel bzImage-qemux86.bin -drive file=core-image-lsb-sdk-qemux86.ext3,if=virtio -enable-kvm -net none -usb -localtime --no-reboot --append "root=/dev/vda rw console=ttyS0 debug". \\
+gdb \\
+target remote :5535 \\
+continue \\
+shutdown -h now \\
+\\
+cd ../linux-yocto-3.14-3.14.24 \\
+cp /scratch/spring2015/files/config-3.14.26-yocto-qemu .config \\
+make -j4 all \\
+cd ../files \\
+cp ../linux-yocto-3.14-3.14.24/arch/x86/bzImage . \\
+qemu-system-i386 -nographic -kernel bzImage -drive file=core-image-lsb-sdk-qemux86.ext3,if=virtio -enable-kvm -net none -usb -localtime --no-reboot --append "root=/dev/vda rw console=ttyS0 debug". \\
+shutdown -h now \\
+\\
+cd .. \\
+git add files \\
+git add linux-yocto-3.14-3.14.24 \\
+git commit -m "upload all files" \\
+git push \\
+\\
+\\
+\\
+\\
+\\
+\\
+\section{Concurrency Solution} 
+
+\begin{tabbing}
+\hspace{3em} \= \hspace{3em} \= \hspace{3em} \=\kill
+initialize buf\_num, buf[32], pthread\_mutex \\
+\\
+create a thread with function A \\
+\\
+while true\\
+\\
+    \>get firstValue from random\_number function\\  
+    \>get secondValue from random\_number function\\ 
+\\       
+    \>while buf\_num==32\\     
+        \>\>continue\\
+    \\
+    \>lock mutex \\
+    \\
+    \>buf[buf\_num].firstValue = firstValue \\
+    \>buf[buf\_num].secondValue = secondValue \\
+    \>buf\_num \textless- 1 + buf\_num\\
+    \\
+    \>unlock mutex \\
+    \\
+    \>get producer\_sleep\_time from random\_number function \\
+    \\
+    \>sleep(producer\_sleep\_time) \\ 
+\\
+function A (for pthread\_create use) \\
+\\
+    \>detach this thread \\
+    \\
+    \>while true \\ 
+        \>\>while buf\_num==0 \\
+            \>\>\>continue \\
+        \\
+        \>\>lock mutex \\
+        \\
+        \>\>firstValue \textless- buf[0].firstValue \\
+        \>\>secondValue \textless- buf[0].secondValue \\
+            \\
+        \>\>for i \textless- 0 to (buf\_num-1) \\
+            \>\>\>buf[i].firstValue \textless- buf[i+1].firstValue \\
+            \>\>\>buf[i].secondValue \textless- buf[i+1].secondValue \\
+            \\
+        \>\>buf\_num \textless- buf\_num - 1 \\
+            \\
+        \>\>unlock mutex \\
+            \\
+        \>\>sleep(secondValue) \\
+            \\
+        \>\>print firstValue \\
+\end{tabbing}
+
+\section{Git Log Table}
+\begin{table}[h]
+\begin{tabular}{llll}
+47f9c34 & Rasadell09 & 3 hours ago  & Add Mersenne Twister files                  \\
+6343b40 & Rasadell09 & 28 hours ago & Add concurrency.c makefile for concurrency1 \\
+ddec9b8 & SuzyWu2014 & 9 days ago   & config file                                 \\
+10d793c & SuzyWu2014 & 9 days ago   & add linux-yocto-3.14.24                     \\
+a0bc9f5 & SuzyWu2014 & 9 days ago   & add bzImage envi\_script                    \\
+b57b624 & SuzyWu2014 & 9 days ago   & first commit                               
+\end{tabular}
+\end{table}
+
+\section{Work Log Table}
+\begin{table}[h]
+\begin{tabular}{lll}
+                        & Work Log Sheet                                                     &  \\
+Assignment:             & CS-544 Homework \#1                                                &  \\
+Members:                & Zhicheng Fu , Yunfan Li                                            &  \\
+                        &                                                                    &  \\
+Start/Stop Time         & Task Performed                                                     &  \\
+14:00 - 18:00 4/1/2015  & Build the kernel and run it in qemu on os-class                    &  \\
+12:00 - 13:30 4/3/2015  & Fix some bugs of the kernel                                        &  \\
+13:00 - 17:00 4/4/2015  & Read books and learn materials                                     &  \\
+14:00 - 17:00 4/5/2015  & review the knowledge of pthread in Linux                           &  \\
+16:00 - 23:30 4/8/2015  & Write the algorithm and write the structure of the pthread program &  \\
+13:00 - 16:30 4/10/2015 & Write the code of rdrand and Mersenne Twister                      &  \\
+13:00 - 20:00 4/11/2015 & Group write-up                                                     &  \\
+\end{tabular}
+\end{table}
+\section*{Appendix 1}
+\input{__concurrency.c.tex}
+\end{document}
+ 

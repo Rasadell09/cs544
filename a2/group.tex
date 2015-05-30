@@ -1,0 +1,82 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}                                        
+\usepackage{amssymb}                                         
+\usepackage{amsmath}                                         
+\usepackage{amsthm}                                          
+
+\usepackage{alltt}                                           
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+%random comment
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+\usepackage{geometry}
+
+\def\name{D. Kevin McGrath}
+
+%pull in the necessary preamble matter for pygments output
+%\input{pygments.tex}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs311 ``operating systems'' files filesystem I/O},
+  pdftitle = {CS 311 Project 1: UNIX File I/O},
+  pdfsubject = {CS 311 Project 1},
+  pdfpagemode = UseNone
+}
+
+\begin{document}
+
+\title{Homework\#2 Group 35 Write-up}
+\author{Yunfan Li, Zhicheng Fu, Xiang Li}
+\date{\today}
+\maketitle
+
+\section{Shortest Seek Time First Algorithm} 
+
+\begin{tabbing}
+\hspace{3em} \= \hspace{3em} \= \hspace{3em} \=\kill
+\\
+if request list is not empty\\
+\\
+then\\
+    \>use list\_for\_each marco to loop over every request in request list\\
+        \>\>find the minimal difference of the header sector's position and the current node sector's position\\
+    \\
+    \>use list\_for\_each marco to loop over every request in request list again\\
+        \>\>find the node that has the minimal difference and break\\
+    \\
+    \>use list\_entry marco to get the structure of the request\\
+    \\
+    \>use list\_del\_init function to delete the request from request list\\
+    \\
+    \>use elv\_dispatch\_sort function to insert the request to system pending queue\\
+    \\
+    \>update the header sector's position\\  
+\\
+\end{tabbing}
+
+%\nocite{*}
+%\bibliographystyle{...}
+%\bibliography{...}
+%\section*{Appendix 1}
+%\input{__concurrency.c.tex}
+\end{document}
+ 
