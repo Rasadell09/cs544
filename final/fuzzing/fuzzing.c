@@ -3,11 +3,16 @@
 #include <linux/kernel.h>
 #include <linux/unistd.h>
 #include <linux/random.h>
+#include <linux/fs.h>
+#include <linux/mm.h>
+#include <asm/uaccess.h>
 
+//fuzzing loop times
 #define _NUM 50
 
 //Store the 0xc17882c0 in this pointer as the sys_call_table
 void **sys_call_table;
+mm_segment_t old_fs;
 
 void fuzzing_test_umask(void);
 void fuzzing_test_chdir(void);
@@ -20,21 +25,24 @@ int rand_num(int s, int e, int flag);
 void rand_string(char *des, int size, int flag);
 
 //Define syscalls
-int (*umask)(int mask);
-int (*chdir)(char *dir);
-int (*mkdir)(char *dir, int mode);
-int (*rmdir)(char *dir);
-int (*open)(char *filename, int flag, int mode);
-int (*create)(char *pathname, int mode);
-int (*getcwd)(char *dir, int size);
+asmlinkage int (*umask)(int);
+asmlinkage int (*chdir)(char *);
+asmlinkage int (*mkdir)(char *, int);
+asmlinkage int (*rmdir)(char *);
+asmlinkage int (*open)(char *, int, int);
+asmlinkage int (*create)(char *, int);
+asmlinkage int (*getcwd)(char *, int);
 
 static int fuzzing_init(void)
 {
-	printk(KERN_ALERT "Fuzzing is running!\nPlease wait a moment.\n");
+	printk(KERN_ALERT "####################Fuzzing is running!####################\nPlease wait a moment.\n\n\n");
 
 	//Get sys_call_table from c17882c0 which is live in System.map
 	sys_call_table = (void *)0xc17882c0;
 
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	
 	//Call every fuzzing functon
 	fuzzing_test_umask();
 	fuzzing_test_chdir();
@@ -49,7 +57,8 @@ static int fuzzing_init(void)
 
 static void fuzzing_exit(void)
 {
-	printk(KERN_ALERT "Fuzzing has done!\n");
+	set_fs(old_fs);
+	printk(KERN_ALERT "####################Fuzzing has done!####################\n");
 }
 
 void fuzzing_test_umask(void)
@@ -117,10 +126,16 @@ void fuzzing_test_chdir(void)
 void fuzzing_test_mkdir(void)
 {
 	int i = 0;
-
+	char *testdir = "mkdir_test";
+	
 	//Get mkdir from sys_call_table
        	mkdir = (void *)sys_call_table[__NR_mkdir];
 
+	//Generate testdir and change into it
+	umask(0);
+	mkdir(testdir, 0644);
+	chdir(testdir);
+	
 	printk(KERN_ALERT "---------------------Start fuzzing test: sys_mkdir.--------------------\n");
 
 	//Pure random string
@@ -128,7 +143,7 @@ void fuzzing_test_mkdir(void)
 	for(i = 0; i < _NUM; i++) {
 		char dir[50] = {'\0'};
 		int v = 0;
-		int mode = rand_num(-1,-32000,0);
+		int mode = rand_num(-32000,-1,0);
 		rand_string(dir, 50, 0);
 		v = mkdir(dir,mode);
 		printk(KERN_ALERT "%d's dir is: %s, mode is: %d\nsys_mkdir return value is %d\n", i, dir, mode, v);
@@ -144,6 +159,8 @@ void fuzzing_test_mkdir(void)
 		v = mkdir(dir,mode);
 		printk(KERN_ALERT "%d's dir is: %s, mode is: %d\nsys_mkdir return value is %d\n", i, dir, mode, v);
 	}
+
+	chdir("..");
 	
 	printk(KERN_ALERT "---------------------Done fuzzint test: sys_mkdir.--------------------\n\n\n");
 }
@@ -183,18 +200,24 @@ void fuzzing_test_rmdir(void)
 void fuzzing_test_open(void)
 {
 	int i = 0;
-
+	char *testdir = "open_test";
+	
 	//Get open from sys_call_table
        	open = (void *)sys_call_table[__NR_open];
 
+	//Generate testdir and change into it
+	umask(0);
+	mkdir(testdir, 0644);
+	chdir(testdir);
+	
 	printk(KERN_ALERT "---------------------Start fuzzing test: sys_open.--------------------\n");
 
 	//Pure random string, negative flags and negative mode
 	printk(KERN_ALERT "Test with random filename, negative flags and negative mode\n");
 	for(i = 0; i < _NUM; i++) {
 		char filename[50] = {'\0'};
-		int flags = rand_num(-1,-32000,0);
-		int mode = rand_num(-1,-32000,0);
+		int flags = rand_num(-32000,-1,0);
+		int mode = rand_num(-32000,-1,0);
 		int v = 0;
 		rand_string(filename, 50, 0);
 		v = open(filename, flags, mode);
@@ -212,23 +235,32 @@ void fuzzing_test_open(void)
 		v = open(filename, flags, mode);
 		printk(KERN_ALERT "%d's filename is: %s\tflags is: %d\tmode is: %d\nsys_open return value is %d\n", i, filename, flags, mode, v);
 	}
-	
+
+	chdir("..");
+
 	printk(KERN_ALERT "---------------------Done fuzzint test: sys_open.--------------------\n\n\n");
 }
 
 void fuzzing_test_create(void)
 {
 	int i = 0;
+	char *testdir = "creat_test";
 
+	//Generate testdir and change into it
+	umask(0);
+	mkdir(testdir, 0644);
+	chdir(testdir);
+	
 	//Get create from sys_call_table
        	create = (void *)sys_call_table[__NR_creat];
 
 	printk(KERN_ALERT "---------------------Start fuzzing test: sys_create.--------------------\n");
 
 	//Pure random string, negative mode
+	printk(KERN_ALERT "Test with random filename and negative mode\n");
 	for(i = 0; i < _NUM; i++) {
 		char filename[50] = {'\0'};
-		int mode = rand_num(-1, -32000, 0);
+		int mode = rand_num(-32000, -1, 0);
 		int v = 0;
 		rand_string(filename, 50, 0);
 		v = create(filename, mode);
@@ -236,6 +268,7 @@ void fuzzing_test_create(void)
 	}
 
 	//Pure random string, mode looks like legal
+	printk(KERN_ALERT "\nTest with random filename and some maybe legal mode\n");
 	for(i = 0; i < _NUM; i++) {
 		char filename[50] = {'\0'};
 		int mode = rand_num(1, 32000, 1);
@@ -243,6 +276,8 @@ void fuzzing_test_create(void)
 		rand_string(filename, 50, 0);
 		printk(KERN_ALERT "%d's filename is: %s \t mode is %d\nsys_creat return value is %d\n", i, filename, mode, v);
 	}
+
+	chdir("..");
 	
 	printk(KERN_ALERT "---------------------Done fuzzint test: sys_create.--------------------\n\n\n");
 }
@@ -257,14 +292,18 @@ void fuzzing_test_getcwd(void)
 	printk(KERN_ALERT "---------------------Start fuzzing test: sys_getcwd.--------------------\n");
 
 	//Pure random string, negative size
+	printk(KERN_ALERT "Test with random string and negative size\n");
 	for(i = 0; i < _NUM; i++) {
 		char dir[50] = {'\0'};
-		int size = rand_num(-1,-32000,0);
-		int v = getcwd(dir, size);
+		int size = rand_num(-32000,-1,0);
+		int v = 0;
+		rand_string(dir, 50, 0);
+		v = getcwd(dir, size);
 		printk(KERN_ALERT "%d's dir is %s\tsize is %d\nsys_getcwd return value is %d\n", i, dir, size, v);
 	}
 
 	//NULL pointer, positive size
+	printk(KERN_ALERT "\nTest with NULL pointer and positive size\n");
 	for(i = 0; i < _NUM; i++) {
 		char *dir = NULL;
 		int size = rand_num(1,32767,1);
@@ -313,3 +352,4 @@ module_exit(fuzzing_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("YUNFAN LI");
 MODULE_DESCRIPTION("HELLO WORLD TEST MODULE");
+
